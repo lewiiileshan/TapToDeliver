@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>My orders - Water Delivery</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header id="nav"></header>
+
+  <main>
+    <h1>My orders</h1>
+    <p class="subtitle">Your orders and where each one stands.</p>
+
+    <div id="banner" class="msg success hidden"></div>
+    <div id="list"></div>
+  </main>
+
+  <script src="app.js"></script>
+  <script>
+    (function () {
+      if (!App.requireLogin()) return;
+      App.renderNav("orders");
+
+      const placed = new URLSearchParams(window.location.search).get("placed");
+      if (placed) {
+        const banner = document.getElementById("banner");
+        banner.textContent = "Order " + placed + " has been placed. We will confirm it shortly.";
+        banner.classList.remove("hidden");
+        window.history.replaceState({}, "", "orders.html");
+      }
+
+      function badgeClass(status) {
+        switch (status) {
+          case "Assigned": return "assigned";
+          case "Out for delivery": return "out";
+          case "Delivered": return "delivered";
+          case "Cancelled": return "cancelled";
+          default: return "pending";
+        }
+      }
+
+      const orders = App.myOrders();
+      const list = document.getElementById("list");
+
+      if (orders.length === 0) {
+        list.innerHTML =
+          '<div class="card empty">' +
+            '<p>You have not placed any orders yet.</p>' +
+            '<a class="btn" href="index.html">Start an order</a>' +
+          '</div>';
+        return;
+      }
+
+      list.innerHTML = orders.map(function (o) {
+        const items = o.items.map(function (i) {
+          return "<li>" + i.qty + " &times; " + App.esc(i.name) +
+                 " (" + App.money(i.unitPrice * i.qty) + ")</li>";
+        }).join("");
+
+        const where = App.esc(o.address) + (o.area ? ", " + App.esc(o.area) : "");
+
+        return (
+          '<article class="card">' +
+            '<div class="order-head">' +
+              '<span class="order-id">' + App.esc(o.id) + '</span>' +
+              '<span class="badge ' + badgeClass(o.status) + '">' + App.esc(o.status) + '</span>' +
+            '</div>' +
+            '<div class="order-meta">' +
+              'Delivery: ' + App.prettyDate(o.date) + ', ' + App.esc(o.slot) + '<br>' +
+              'To: ' + where + (o.coords ? ' (map pin saved)' : '') +
+            '</div>' +
+            '<ul class="order-items">' + items + '</ul>' +
+            (o.notes ? '<div class="order-meta">Note: ' + App.esc(o.notes) + '</div>' : '') +
+            '<div class="order-foot"><span>Total</span><span>' + App.money(o.total) + '</span></div>' +
+          '</article>'
+        );
+      }).join("");
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AQUABLISS Water Delivery</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header id="nav"></header>
+
+  <section class="hero-banner">
+    <span class="hero-fallback">AQUABLISS</span>
+    <img src="images/banner.jpg" alt="AUABLISS purified drinking water" onerror="this.remove()">
+  </section>
+
+  <main id="products-section">
+    <h2 class="section-title">PRODUCTS <span>AVAILABLE</span></h2>
+    
+    <div id="products" class="product-grid"></div>
+
+    <div class="card checkout-card">
+      <div class="total-bar">
+        <span>Total</span>
+        <span id="total">KES 0</span>
+      </div>
+      <div id="error" class="msg error hidden"></div>
+      <button class="btn block" id="orderBtn" type="button">Order now</button>
+      <p class="hint" id="authHint" style="text-align:center; margin-top:8px;"></p>
+    </div>
+  </main>
+
+  <script src="app.js"></script>
+  <script>
+    App.renderNav("shop");
+
+    const user = App.currentUser();
+    const productsEl = document.getElementById("products");
+    const totalEl = document.getElementById("total");
+    const errorBox = document.getElementById("error");
+    const orderBtn = document.getElementById("orderBtn");
+
+    const saved = {};
+    App.getCart().forEach(function (i) { saved[i.productId] = i.qty; });
+
+    productsEl.innerHTML = App.PRODUCTS.map(function (p) {
+      return (
+        '<div class="product" data-id="' + p.id + '">' +
+          '<div class="product-img">' +
+            '<img src="' + App.esc(p.image) + '" alt="' + App.esc(p.name) + '" loading="lazy" onerror="this.remove()">' +
+          '</div>' +
+          '<div class="info">' +
+            '<div class="name">' + App.esc(p.name) + '</div>' +
+            '<div class="price">' + App.money(p.price) + ' each</div>' +
+          '</div>' +
+          '<div class="qty">' +
+            '<button type="button" data-act="minus" aria-label="Decrease ' + App.esc(p.name) + '">&minus;</button>' +
+            '<input type="text" inputmode="numeric" value="' + (saved[p.id] || 0) + '" aria-label="Quantity of ' + App.esc(p.name) + '">' +
+            '<button type="button" data-act="plus" aria-label="Increase ' + App.esc(p.name) + '">+</button>' +
+          '</div>' +
+          '<div class="line-total"></div>' +
+        '</div>'
+      );
+    }).join("");
+
+    function readQty(input) {
+      const n = parseInt(input.value, 10);
+      if (isNaN(n) || n < 0) return 0;
+      return Math.min(n, 99);
+    }
+
+    function recalc() {
+      let total = 0;
+      productsEl.querySelectorAll(".product").forEach(function (row) {
+        const product = App.findProduct(row.dataset.id);
+        const input = row.querySelector("input");
+        const qty = readQty(input);
+        input.value = qty;
+        const line = qty * product.price;
+        row.querySelector(".line-total").textContent = qty > 0 ? App.money(line) : "";
+        row.classList.toggle("selected", qty > 0);
+        total += line;
+      });
+      totalEl.textContent = App.money(total);
+    }
+
+    productsEl.addEventListener("click", function (e) {
+      const btn = e.target.closest("button");
+      if (!btn) return;
+      const input = btn.parentElement.querySelector("input");
+      const qty = readQty(input);
+      input.value = btn.dataset.act === "plus" ? Math.min(qty + 1, 99) : Math.max(qty - 1, 0);
+      recalc();
+    });
+    productsEl.addEventListener("input", recalc);
+
+    if (user) {
+      orderBtn.textContent = "Continue to delivery details";
+    } else {
+      document.getElementById("authHint").textContent =
+        "Next you will log in or create an account, so we know who and where to deliver to.";
+    }
+
+    orderBtn.addEventListener("click", function () {
+      errorBox.classList.add("hidden");
+      const items = [];
+      productsEl.querySelectorAll(".product").forEach(function (row) {
+        items.push({ productId: row.dataset.id, qty: readQty(row.querySelector("input")) });
+      });
+      if (!items.some(function (i) { return i.qty > 0; })) {
+        errorBox.textContent = "Choose at least one item first.";
+        errorBox.classList.remove("hidden");
+        return;
+      }
+      App.setCart(items);
+      window.location.href = user ? "order.html" : App.authUrl("login.html", "order.html");
+    });
+
+    recalc();
+  </script>
+</body>
+</html>

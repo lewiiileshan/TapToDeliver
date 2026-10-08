@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Checkout - Water Delivery</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header id="nav"></header>
+
+  <main>
+    <h1>Checkout</h1>
+    <p class="subtitle">Check your order and confirm where it should go.</p>
+
+    <form id="orderForm" novalidate>
+      <div id="error" class="msg error hidden"></div>
+
+      <section class="card">
+        <h2>Your order</h2>
+        <div id="summary"></div>
+        <div class="total-bar" style="margin-bottom:8px;">
+          <span>Total</span>
+          <span id="total">KES 0</span>
+        </div>
+        <a href="index.html">Change items</a>
+      </section>
+
+      <section class="card">
+        <h2>Delivery details</h2>
+
+        <div class="field">
+          <label for="address">Delivery address</label>
+          <textarea id="address" required></textarea>
+        </div>
+
+        <div class="field">
+          <label for="area">Area or town</label>
+          <input type="text" id="area" required>
+        </div>
+
+        <div class="field">
+          <div class="loc-row">
+            <button class="btn ghost" id="locBtn" type="button">Use my current location</button>
+            <span class="loc-status" id="locStatus"></span>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="field">
+            <label for="date">Delivery date</label>
+            <input type="date" id="date" required>
+          </div>
+          <div class="field">
+            <label for="slot">Time slot</label>
+            <select id="slot"></select>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="notes">Notes for the driver (optional)</label>
+          <textarea id="notes" placeholder="Gate colour, floor number, who to call..."></textarea>
+        </div>
+      </section>
+
+      <button class="btn block" type="submit">Place order</button>
+      <p class="hint" style="text-align:center; margin-top:8px;">
+        Payment is not online yet. You pay on delivery for now.
+      </p>
+    </form>
+  </main>
+
+  <script src="app.js"></script>
+  <script>
+    (function () {
+      const user = App.requireLogin();
+      if (!user) return;
+
+      App.renderNav("shop");
+
+      const cart = App.getCart();
+      if (cart.length === 0) {
+        window.location.href = "index.html";
+        return;
+      }
+
+      const errorBox = document.getElementById("error");
+      const form = document.getElementById("orderForm");
+      const locStatus = document.getElementById("locStatus");
+      let coords = user.coords || null;
+
+      document.getElementById("summary").innerHTML = cart.map(function (i) {
+        const p = App.findProduct(i.productId);
+        return (
+          '<div class="summary-line">' +
+            '<span>' + i.qty + ' &times; ' + App.esc(p.name) + '</span>' +
+            '<span>' + App.money(p.price * i.qty) + '</span>' +
+          '</div>'
+        );
+      }).join("");
+      document.getElementById("total").textContent = App.money(App.cartTotal());
+
+      document.getElementById("address").value = user.address || "";
+      document.getElementById("area").value = user.area || "";
+      locStatus.textContent = coords
+        ? "Using the location saved on your account."
+        : "Optional. Saves a map pin so the driver finds you faster.";
+
+      document.getElementById("locBtn").addEventListener("click", function () {
+        locStatus.textContent = "Finding your location...";
+        App.getLocation(function (result) {
+          if (result.ok) {
+            coords = result.coords;
+            locStatus.textContent = "Location saved for this order.";
+          } else {
+            locStatus.textContent = result.error;
+          }
+        });
+      });
+
+      const dateInput = document.getElementById("date");
+      dateInput.min = App.todayString();
+      dateInput.value = App.todayString();
+
+      document.getElementById("slot").innerHTML = App.TIME_SLOTS.map(function (s) {
+        return '<option value="' + App.esc(s) + '">' + App.esc(s) + '</option>';
+      }).join("");
+      
+      function showError(text) {
+        errorBox.textContent = text;
+        errorBox.classList.remove("hidden");
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+
+      form.addEventListener("submit", function (e) {
+        e.preventDefault();
+        errorBox.classList.add("hidden");
+
+        const address = document.getElementById("address").value;
+        const area = document.getElementById("area").value;
+        const date = dateInput.value;
+
+        if (!address.trim()) {
+          showError("Enter a delivery address.");
+          return;
+        }
+        if (!area.trim()) {
+          showError("Enter your area or town.");
+          return;
+        }
+        if (!date || date < App.todayString()) {
+          showError("Pick a delivery date from today onwards.");
+          return;
+        }
+
+        const result = App.placeOrder({
+          items: cart,
+          address: address,
+          area: area,
+          coords: coords,
+          date: date,
+          slot: document.getElementById("slot").value,
+          notes: document.getElementById("notes").value
+        });
+
+        if (!result.ok) {
+          showError(result.error);
+          return;
+        }
+
+        App.clearCart();
+        window.location.href = "orders.html?placed=" + encodeURIComponent(result.order.id);
+      });
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Create account - Water Delivery</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header id="nav"></header>
+
+  <main class="narrow">
+    <h1>Create an account</h1>
+    <p class="subtitle">We need a few details so the driver can find you.</p>
+
+    <div id="notice" class="msg info hidden">
+      Create an account to finish your order. Your items are saved.
+    </div>
+
+    <form class="card" id="registerForm" novalidate>
+      <div id="error" class="msg error hidden"></div>
+
+      <div class="field">
+        <label for="name">Full name</label>
+        <input type="text" id="name" autocomplete="name" required>
+      </div>
+
+      <div class="field">
+        <label for="phone">Phone number</label>
+        <input type="tel" id="phone" placeholder="0712345678" autocomplete="tel" required>
+        <div class="hint">Used to log in and for the driver to call you.</div>
+      </div>
+
+      <div class="field">
+        <label for="address">Delivery address</label>
+        <textarea id="address" placeholder="Estate, street, house or office number" required></textarea>
+      </div>
+
+      <div class="field">
+        <label for="area">Area or town</label>
+        <input type="text" id="area" placeholder="e.g. Eldoret town" required>
+      </div>
+
+      <div class="field">
+        <div class="loc-row">
+          <button class="btn ghost" id="locBtn" type="button">Use my current location</button>
+          <span class="loc-status" id="locStatus">Optional. Saves a map pin so the driver finds you faster.</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="password">Password</label>
+        <input type="password" id="password" autocomplete="new-password" required>
+        <div class="hint">At least 6 characters.</div>
+      </div>
+
+      <div class="field">
+        <label for="confirm">Confirm password</label>
+        <input type="password" id="confirm" autocomplete="new-password" required>
+      </div>
+
+      <button class="btn block" type="submit">Create account</button>
+    </form>
+
+    <p class="auth-switch">Already registered? <a id="loginLink" href="login.html">Log in</a></p>
+  </main>
+
+  <script src="app.js"></script>
+  <script>
+    if (App.currentUser()) {
+      window.location.href = App.afterAuthUrl();
+    }
+    App.renderNav();
+
+    const next = App.currentNext();
+    document.getElementById("loginLink").href = App.authUrl("login.html", next);
+
+    if (next === "order.html" || App.getCart().length > 0) {
+      document.getElementById("notice").classList.remove("hidden");
+    }
+
+    const form = document.getElementById("registerForm");
+    const errorBox = document.getElementById("error");
+    const locStatus = document.getElementById("locStatus");
+    let coords = null;
+
+    function showError(text) {
+      errorBox.textContent = text;
+      errorBox.classList.remove("hidden");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    document.getElementById("locBtn").addEventListener("click", function () {
+      locStatus.textContent = "Finding your location...";
+      App.getLocation(function (result) {
+        if (result.ok) {
+          coords = result.coords;
+          locStatus.textContent = "Location saved.";
+        } else {
+          locStatus.textContent = result.error;
+        }
+      });
+    });
+
+    form.addEventListener("submit", function (e) {
+      e.preventDefault();
+      errorBox.classList.add("hidden");
+
+      const name = document.getElementById("name").value;
+      const phone = document.getElementById("phone").value;
+      const address = document.getElementById("address").value;
+      const area = document.getElementById("area").value;
+      const password = document.getElementById("password").value;
+      const confirm = document.getElementById("confirm").value;
+
+      if (!name.trim() || !phone.trim() || !address.trim() || !area.trim() || !password) {
+        showError("Please fill in every field.");
+        return;
+      }
+      if (password.length < 6) {
+        showError("Your password needs at least 6 characters.");
+        return;
+      }
+      if (password !== confirm) {
+        showError("The two passwords do not match.");
+        return;
+      }
+
+      const result = App.register({
+        name: name,
+        phone: phone,
+        address: address,
+        area: area,
+        coords: coords,
+        password: password
+      });
+
+      if (!result.ok) {
+        showError(result.error);
+        return;
+      }
+      window.location.href = App.afterAuthUrl();
+    });
+  </script>
+</body>
+</html>

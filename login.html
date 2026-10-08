@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Log in - Water Delivery</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header id="nav"></header>
+
+  <main class="narrow">
+    <h1>Log in</h1>
+    <p class="subtitle">Welcome back.</p>
+
+    <div id="notice" class="msg info hidden">
+      Log in or create an account to finish your order. Your items are saved.
+    </div>
+
+    <form class="card" id="loginForm" novalidate>
+      <div id="error" class="msg error hidden"></div>
+
+      <div class="field">
+        <label for="phone">Phone number</label>
+        <input type="tel" id="phone" placeholder="0712345678" autocomplete="tel" required>
+      </div>
+
+      <div class="field">
+        <label for="password">Password</label>
+        <input type="password" id="password" autocomplete="current-password" required>
+      </div>
+
+      <button class="btn block" type="submit">Log in</button>
+    </form>
+
+    <p class="auth-switch">New here? <a id="registerLink" href="register.html">Create an account</a></p>
+  </main>
+
+  <script src="app.js"></script>
+  <script>
+
+    if (App.currentUser()) {
+      window.location.href = App.afterAuthUrl();
+    }
+    App.renderNav();
+
+    const next = App.currentNext();
+    document.getElementById("registerLink").href = App.authUrl("register.html", next);
+
+    if (next === "order.html" || App.getCart().length > 0) {
+      document.getElementById("notice").classList.remove("hidden");
+    }
+
+    const form = document.getElementById("loginForm");
+    const errorBox = document.getElementById("error");
+
+    function showError(text) {
+      errorBox.textContent = text;
+      errorBox.classList.remove("hidden");
+    }
+
+    form.addEventListener("submit", function (e) {
+      e.preventDefault();
+      errorBox.classList.add("hidden");
+
+      const phone = document.getElementById("phone").value;
+      const password = document.getElementById("password").value;
+
+      if (!phone.trim() || !password) {
+        showError("Enter your phone number and password.");
+        return;
+      }
+
+      const result = App.login(phone, password);
+      if (!result.ok) {
+        showError(result.error);
+        return;
+      }
+      window.location.href = App.afterAuthUrl();
+    });
+  </script>
+</body>
+</html>
